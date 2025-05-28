@@ -8,12 +8,8 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar arquivos de requisitos
-COPY requirements.txt .
-
-# Instalar dependências Python
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install gunicorn
+# Instalar dependências Python diretamente
+RUN pip install --no-cache-dir pandas openpyxl langchain langchain-openai openai python-dotenv flask fpdf2 xlsxwriter gunicorn
 
 # Copiar o código da aplicação
 COPY . .
