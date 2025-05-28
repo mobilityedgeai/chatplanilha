@@ -26,5 +26,5 @@ ENV TEMPLATES_AUTO_RELOAD=True
 EXPOSE 8080
 ENV PORT=8080
 
-# Comando para iniciar a aplicação
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 "src.main:app"
+# Comando para iniciar a aplicação (versão simplificada)
+CMD ["python", "-m", "flask", "--app", "src.main", "run", "--host=0.0.0.0", "--port=${PORT:-8080}"]
