@@ -1,323 +1,200 @@
 """
-Módulo para processamento de dados de planilhas Excel.
-Responsável por carregar, processar e fornecer acesso aos dados de viagens de motoristas.
+Módulo para processamento de dados de planilhas.
 """
 
+import os
 import pandas as pd
 import numpy as np
-import os
-from typing import Dict, List, Any, Optional, Tuple
 import json
+import math
+from datetime import datetime
 
 class DataProcessor:
     """
-    Classe para processamento de dados de planilhas Excel com informações de viagens de motoristas.
+    Classe para processamento de dados de planilhas.
     """
     
     def __init__(self):
-        """Inicializa o processador de dados."""
+        """
+        Inicializa o processador de dados.
+        """
         self.data = None
+        self.metadata = None
         self.file_path = None
-        self.summary_stats = {}
-        self.column_types = {}
-        self.metadata = {}
     
-    def load_data(self, file_path: str) -> bool:
+    def load_excel(self, file_path):
         """
         Carrega dados de um arquivo Excel.
         
         Args:
-            file_path: Caminho para o arquivo Excel
+            file_path (str): Caminho para o arquivo Excel.
             
         Returns:
-            bool: True se o carregamento foi bem-sucedido, False caso contrário
+            bool: True se o carregamento foi bem-sucedido, False caso contrário.
         """
         try:
             self.file_path = file_path
-            # Usar engine openpyxl para arquivos .xlsx
-            self.data = pd.read_excel(file_path, engine='openpyxl')
-            
-            # Processar metadados e estatísticas básicas
-            self._process_metadata()
-            self._calculate_summary_stats()
-            
+            self.data = pd.read_excel(file_path)
+            self.extract_metadata()
             return True
         except Exception as e:
-            print(f"Erro ao carregar dados: {str(e)}")
+            print(f"Erro ao carregar arquivo Excel: {str(e)}")
             return False
     
-    def _process_metadata(self):
-        """Processa metadados do DataFrame."""
-        if self.data is not None:
-            self.metadata = {
-                'num_rows': len(self.data),
-                'num_columns': len(self.data.columns),
-                'columns': list(self.data.columns),
-                'memory_usage': self.data.memory_usage(deep=True).sum() / (1024 * 1024),  # MB
-                'file_name': os.path.basename(self.file_path) if self.file_path else None
-            }
-            
-            # Identificar tipos de colunas
-            self.column_types = {}
-            for col in self.data.columns:
-                if pd.api.types.is_numeric_dtype(self.data[col]):
-                    if pd.api.types.is_integer_dtype(self.data[col]):
-                        self.column_types[col] = 'integer'
-                    else:
-                        self.column_types[col] = 'float'
-                elif pd.api.types.is_datetime64_dtype(self.data[col]):
-                    self.column_types[col] = 'datetime'
-                else:
-                    self.column_types[col] = 'text'
-            
-            self.metadata['column_types'] = self.column_types
-    
-    def _calculate_summary_stats(self):
-        """Calcula estatísticas resumidas dos dados."""
-        if self.data is not None:
-            # Estatísticas básicas para colunas numéricas
-            numeric_cols = self.data.select_dtypes(include=[np.number]).columns
-            if not numeric_cols.empty:
-                self.summary_stats['numeric'] = self.data[numeric_cols].describe().to_dict()
-            
-            # Contagens para colunas categóricas (limitado a 20 valores mais comuns)
-            categorical_cols = [col for col in self.data.columns 
-                               if col not in numeric_cols and self.data[col].nunique() < 100]
-            
-            self.summary_stats['categorical'] = {}
-            for col in categorical_cols:
-                self.summary_stats['categorical'][col] = self.data[col].value_counts().head(20).to_dict()
-            
-            # Informações sobre valores ausentes
-            self.summary_stats['missing_values'] = self.data.isna().sum().to_dict()
-    
-    def get_metadata(self) -> Dict:
+    def extract_metadata(self):
         """
-        Retorna metadados sobre os dados carregados.
+        Extrai metadados dos dados carregados.
+        """
+        if self.data is None:
+            self.metadata = None
+            return
+        
+        self.metadata = {
+            'num_rows': len(self.data),
+            'num_columns': len(self.data.columns),
+            'columns': list(self.data.columns),
+            'file_name': os.path.basename(self.file_path) if self.file_path else None,
+            'load_time': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+    
+    def get_metadata(self):
+        """
+        Retorna os metadados dos dados carregados.
         
         Returns:
-            Dict: Metadados dos dados
+            dict: Metadados ou None se não houver dados carregados.
         """
         return self.metadata
     
-    def get_summary_stats(self) -> Dict:
+    def sanitize_data(self, data):
         """
-        Retorna estatísticas resumidas dos dados.
-        
-        Returns:
-            Dict: Estatísticas resumidas
-        """
-        return self.summary_stats
-    
-    def query_data(self, query: str) -> pd.DataFrame:
-        """
-        Executa uma consulta nos dados usando a sintaxe do pandas query.
+        Sanitiza os dados para garantir compatibilidade com JSON.
         
         Args:
-            query: String de consulta no formato pandas query
+            data: Dados a serem sanitizados (pode ser dict, list, DataFrame, Series, etc.)
             
         Returns:
-            pd.DataFrame: Resultado da consulta
+            Dados sanitizados com valores NaN e Infinity substituídos por None
         """
-        if self.data is None:
-            return pd.DataFrame()
-        
-        try:
-            return self.data.query(query)
-        except Exception as e:
-            print(f"Erro na consulta: {str(e)}")
-            return pd.DataFrame()
+        if isinstance(data, float) and (math.isnan(data) or math.isinf(data)):
+            return None
+        elif isinstance(data, dict):
+            return {k: self.sanitize_data(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self.sanitize_data(v) for v in data]
+        elif isinstance(data, pd.DataFrame):
+            # Converte o DataFrame para dicionário e sanitiza
+            return self.sanitize_data(data.to_dict(orient='records'))
+        elif isinstance(data, pd.Series):
+            # Converte a Series para dicionário e sanitiza
+            return self.sanitize_data(data.to_dict())
+        elif isinstance(data, np.ndarray):
+            # Converte arrays numpy para lista e sanitiza
+            return self.sanitize_data(data.tolist())
+        elif isinstance(data, np.integer):
+            return int(data)
+        elif isinstance(data, np.floating):
+            return None if math.isnan(data) or math.isinf(data) else float(data)
+        else:
+            return data
     
-    def get_column_data(self, column_name: str) -> List:
+    def get_data_for_query(self, query=None):
         """
-        Retorna os dados de uma coluna específica.
+        Retorna os dados para consulta, opcionalmente filtrados.
         
         Args:
-            column_name: Nome da coluna
+            query (str, optional): Consulta para filtrar os dados.
             
         Returns:
-            List: Dados da coluna
-        """
-        if self.data is None or column_name not in self.data.columns:
-            return []
-        
-        return self.data[column_name].tolist()
-    
-    def get_data_sample(self, n: int = 5) -> pd.DataFrame:
-        """
-        Retorna uma amostra dos dados.
-        
-        Args:
-            n: Número de linhas na amostra
-            
-        Returns:
-            pd.DataFrame: Amostra dos dados
-        """
-        if self.data is None:
-            return pd.DataFrame()
-        
-        return self.data.head(n)
-    
-    def calculate_metrics(self, group_by: str, metric_col: str, 
-                         agg_func: str = 'mean') -> pd.DataFrame:
-        """
-        Calcula métricas agregadas agrupando por uma coluna.
-        
-        Args:
-            group_by: Coluna para agrupar
-            metric_col: Coluna para calcular métrica
-            agg_func: Função de agregação ('mean', 'sum', 'count', 'min', 'max')
-            
-        Returns:
-            pd.DataFrame: Resultado da agregação
-        """
-        if self.data is None:
-            return pd.DataFrame()
-        
-        if group_by not in self.data.columns or metric_col not in self.data.columns:
-            return pd.DataFrame()
-        
-        try:
-            return self.data.groupby(group_by).agg({metric_col: agg_func})
-        except Exception as e:
-            print(f"Erro ao calcular métricas: {str(e)}")
-            return pd.DataFrame()
-    
-    def calculate_driver_scores(self) -> pd.DataFrame:
-        """
-        Calcula scores de motoristas com base nos dados disponíveis.
-        Esta é uma função específica para o caso de uso de gestão de frota.
-        
-        Returns:
-            pd.DataFrame: DataFrame com scores de motoristas
-        """
-        if self.data is None:
-            return pd.DataFrame()
-        
-        # Verificar se existem colunas necessárias para calcular scores
-        # Esta implementação é genérica e deve ser adaptada aos dados reais
-        driver_col = self._find_column_by_pattern(['motorista', 'condutor', 'driver'])
-        if not driver_col:
-            return pd.DataFrame({'erro': ['Coluna de motorista não encontrada']})
-        
-        # Criar DataFrame de scores
-        scores_df = pd.DataFrame()
-        scores_df['motorista'] = self.data[driver_col].unique()
-        
-        # Calcular métricas por motorista (exemplo genérico)
-        # Estas métricas devem ser adaptadas aos dados reais
-        
-        # Número de viagens
-        scores_df['total_viagens'] = scores_df['motorista'].apply(
-            lambda x: len(self.data[self.data[driver_col] == x])
-        )
-        
-        # Se houver coluna de distância
-        dist_col = self._find_column_by_pattern(['distancia', 'km', 'quilometragem', 'distance'])
-        if dist_col:
-            scores_df['distancia_total'] = scores_df['motorista'].apply(
-                lambda x: self.data[self.data[driver_col] == x][dist_col].sum()
-            )
-            scores_df['distancia_media'] = scores_df['motorista'].apply(
-                lambda x: self.data[self.data[driver_col] == x][dist_col].mean()
-            )
-        
-        # Se houver coluna de tempo
-        time_col = self._find_column_by_pattern(['tempo', 'duracao', 'duration', 'time'])
-        if time_col:
-            scores_df['tempo_total'] = scores_df['motorista'].apply(
-                lambda x: self.data[self.data[driver_col] == x][time_col].sum()
-            )
-            scores_df['tempo_medio'] = scores_df['motorista'].apply(
-                lambda x: self.data[self.data[driver_col] == x][time_col].mean()
-            )
-        
-        # Se houver coluna de consumo/combustível
-        fuel_col = self._find_column_by_pattern(['consumo', 'combustivel', 'fuel', 'consumption'])
-        if fuel_col:
-            scores_df['consumo_total'] = scores_df['motorista'].apply(
-                lambda x: self.data[self.data[driver_col] == x][fuel_col].sum()
-            )
-            scores_df['consumo_medio'] = scores_df['motorista'].apply(
-                lambda x: self.data[self.data[driver_col] == x][fuel_col].mean()
-            )
-        
-        # Se houver coluna de infrações/eventos
-        event_col = self._find_column_by_pattern(['infracoes', 'eventos', 'violations', 'events'])
-        if event_col:
-            scores_df['total_eventos'] = scores_df['motorista'].apply(
-                lambda x: self.data[self.data[driver_col] == x][event_col].sum()
-            )
-        
-        # Calcular score geral (exemplo simplificado)
-        # Na prática, este cálculo seria mais complexo e baseado em pesos específicos
-        score_columns = []
-        
-        if 'distancia_total' in scores_df.columns:
-            score_columns.append('distancia_total')
-        
-        if 'total_viagens' in scores_df.columns:
-            score_columns.append('total_viagens')
-        
-        if 'total_eventos' in scores_df.columns:
-            # Eventos são negativos para o score
-            scores_df['eventos_norm'] = 100 - (scores_df['total_eventos'] / scores_df['total_eventos'].max() * 100)
-            score_columns.append('eventos_norm')
-        
-        if score_columns:
-            # Normalizar colunas para escala 0-100
-            for col in score_columns:
-                if col != 'eventos_norm':  # eventos já estão normalizados
-                    max_val = scores_df[col].max()
-                    if max_val > 0:
-                        scores_df[f'{col}_norm'] = scores_df[col] / max_val * 100
-                        score_columns[score_columns.index(col)] = f'{col}_norm'
-            
-            # Calcular média das colunas normalizadas
-            scores_df['score_geral'] = scores_df[score_columns].mean(axis=1)
-        
-        return scores_df
-    
-    def _find_column_by_pattern(self, patterns: List[str]) -> Optional[str]:
-        """
-        Encontra uma coluna que corresponda a um dos padrões fornecidos.
-        
-        Args:
-            patterns: Lista de padrões para procurar nos nomes das colunas
-            
-        Returns:
-            Optional[str]: Nome da coluna encontrada ou None
+            dict: Dados sanitizados para consulta ou None se não houver dados carregados.
         """
         if self.data is None:
             return None
         
-        for pattern in patterns:
-            for col in self.data.columns:
-                if pattern.lower() in col.lower():
-                    return col
+        if query:
+            # Implementar lógica de filtragem baseada na consulta
+            # Por enquanto, retorna todos os dados
+            filtered_data = self.data
+        else:
+            filtered_data = self.data
         
-        return None
+        # Sanitizar os dados antes de retornar
+        return self.sanitize_data(filtered_data)
     
-    def to_json(self) -> str:
+    def to_json(self):
         """
         Converte os dados para formato JSON.
         
         Returns:
-            str: Dados em formato JSON
+            str: Dados em formato JSON ou "{}" se não houver dados carregados.
         """
         if self.data is None:
             return json.dumps({})
         
-        return self.data.to_json(orient='records')
+        # Sanitizar os dados antes de converter para JSON
+        sanitized_data = self.sanitize_data(self.data)
+        return json.dumps(sanitized_data)
     
-    def to_dict(self) -> List[Dict]:
+    def get_summary_stats(self):
         """
-        Converte os dados para uma lista de dicionários.
+        Calcula estatísticas resumidas dos dados.
         
         Returns:
-            List[Dict]: Dados como lista de dicionários
+            dict: Estatísticas resumidas ou None se não houver dados carregados.
         """
         if self.data is None:
-            return []
+            return None
         
-        return self.data.to_dict(orient='records')
+        numeric_columns = self.data.select_dtypes(include=['number']).columns
+        
+        stats = {}
+        for col in numeric_columns:
+            stats[col] = {
+                'mean': self.data[col].mean(),
+                'median': self.data[col].median(),
+                'min': self.data[col].min(),
+                'max': self.data[col].max(),
+                'std': self.data[col].std()
+            }
+        
+        # Sanitizar as estatísticas antes de retornar
+        return self.sanitize_data(stats)
+    
+    def filter_data(self, filters):
+        """
+        Filtra os dados com base em critérios específicos.
+        
+        Args:
+            filters (dict): Critérios de filtragem no formato {coluna: valor}.
+            
+        Returns:
+            pandas.DataFrame: Dados filtrados ou None se não houver dados carregados.
+        """
+        if self.data is None:
+            return None
+        
+        filtered_data = self.data.copy()
+        
+        for column, value in filters.items():
+            if column in filtered_data.columns:
+                filtered_data = filtered_data[filtered_data[column] == value]
+        
+        return filtered_data
+    
+    def get_column_values(self, column):
+        """
+        Retorna valores únicos de uma coluna específica.
+        
+        Args:
+            column (str): Nome da coluna.
+            
+        Returns:
+            list: Valores únicos da coluna ou None se a coluna não existir.
+        """
+        if self.data is None or column not in self.data.columns:
+            return None
+        
+        values = self.data[column].unique().tolist()
+        
+        # Sanitizar os valores antes de retornar
+        return self.sanitize_data(values)
