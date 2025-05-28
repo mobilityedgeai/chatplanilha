@@ -57,13 +57,13 @@ try:
         logger.error(f"Erro ao inicializar componentes da aplicação: {str(e)}")
         # Continuar mesmo com erro, para permitir diagnóstico via interface
 
-    # Rota principal
+    # Rota principal - MODIFICADA para usar o arquivo da pasta static
     @app.route('/')
     def index():
         try:
-            return render_template('index.html')
+            return send_from_directory('static', 'index.html')
         except Exception as e:
-            logger.error(f"Erro ao renderizar template index.html: {str(e)}")
+            logger.error(f"Erro ao servir index.html da pasta static: {str(e)}")
             return jsonify({"error": "Erro ao carregar a página inicial", "details": str(e)}), 500
 
     # Rota para arquivos estáticos
