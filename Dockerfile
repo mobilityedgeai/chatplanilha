@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar dependências Python diretamente
+# Instalar dependências Python diretamente (sem usar requirements.txt)
 RUN pip install --no-cache-dir pandas openpyxl langchain langchain-openai openai python-dotenv flask fpdf2 xlsxwriter gunicorn
 
 # Copiar o código da aplicação
