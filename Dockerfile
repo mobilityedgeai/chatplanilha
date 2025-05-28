@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Instalar dependências Python diretamente (sem usar requirements.txt)
+# Instalar dependências Python diretamente
 RUN pip install --no-cache-dir pandas openpyxl langchain langchain-openai openai python-dotenv flask fpdf2 xlsxwriter gunicorn
 
 # Copiar o código da aplicação
@@ -26,5 +26,5 @@ ENV TEMPLATES_AUTO_RELOAD=True
 EXPOSE 8080
 ENV PORT=8080
 
-# Comando para iniciar a aplicação (versão simplificada)
-CMD ["python", "-m", "flask", "--app", "src.main", "run", "--host=0.0.0.0", "--port=${PORT:-8080}"]
+# Comando para iniciar a aplicação (corrigido)
+CMD python -m flask --app src.main run --host=0.0.0.0 --port=8080
