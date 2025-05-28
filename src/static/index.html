@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat com Planilha - Sistema de IA para Gestão de Frota</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #4285F4;
+            --secondary-color: #34A853;
+            --accent-color: #FBBC05;
+            --danger-color: #EA4335;
+            --light-bg: #F8F9FA;
+            --dark-bg: #212529;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light-bg);
+            color: #333;
+        }
+        
+        .navbar {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            color: white !important;
+        }
+        
+        .main-container {
+            min-height: calc(100vh - 56px);
+            padding: 20px;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: bold;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: #3367d6;
+            border-color: #3367d6;
+        }
+        
+        .btn-success {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+        
+        .btn-success:hover {
+            background-color: #2d9249;
+            border-color: #2d9249;
+        }
+        
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 0 0 10px 10px;
+        }
+        
+        .chat-message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            position: relative;
+        }
+        
+        .user-message {
+            background-color: var(--primary-color);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .bot-message {
+            background-color: #e9ecef;
+            color: #333;
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .message-time {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.7);
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+        }
+        
+        .bot-message .message-time {
+            color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .chat-input {
+            border-radius: 20px;
+            padding-right: 50px;
+        }
+        
+        .send-button {
+            position: absolute;
+            right: 10px;
+            top: 5px;
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.5rem;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(66, 133, 244, 0.05);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            color: var(--primary-color);
+        }
+        
+        .data-preview {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .report-card {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .report-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .report-icon {
+            font-size: 48px;
+            color: var(--primary-color);
+        }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .spinner-border {
+            color: var(--primary-color);
+        }
+        
+        .data-stats {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .stats-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stats-label {
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .stats-value {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+        
+        @media (max-width: 768px) {
+            .chat-message {
+                max-width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-chat-dots"></i> Chat com Planilha
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" id="nav-chat">Chat</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-upload">Upload</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-reports">Relatórios</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container main-container">
+        <!-- Upload Section -->
+        <div id="upload-section" class="row" style="display: none;">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-cloud-upload"></i> Upload de Planilha
+                    </div>
+                    <div class="card-body">
+                        <div class="upload-area" id="upload-area">
+                            <input type="file" id="file-input" accept=".xlsx,.xls" style="display: none;">
+                            <div class="upload-icon">
+                                <i class="bi bi-file-earmark-excel"></i>
+                            </div>
+                            <h4 class="mt-3">Arraste e solte sua planilha aqui</h4>
+                            <p class="text-muted">ou clique para selecionar</p>
+                            <p class="text-muted small">Formatos suportados: .xlsx, .xls</p>
+                        </div>
+                        
+                        <div class="loading-spinner" id="upload-loading">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <p class="mt-2">Processando planilha, por favor aguarde...</p>
+                        </div>
+                        
+                        <div id="upload-success" style="display: none;" class="mt-4">
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle-fill"></i> Planilha carregada com sucesso!
+                            </div>
+                            
+                            <div class="data-stats">
+                                <h5>Informações da Planilha</h5>
+                                <div class="stats-item">
+                                    <span class="stats-label">Arquivo:</span>
+                                    <span class="stats-value" id="stats-filename">-</span>
+                                </div>
+                                <div class="stats-item">
+                                    <span class="stats-label">Registros:</span>
+                                    <span class="stats-value" id="stats-rows">-</span>
+                                </div>
+                                <div class="stats-item">
+                                    <span class="stats-label">Colunas:</span>
+                                    <span class="stats-value" id="stats-columns">-</span>
+                                </div>
+                                <div class="stats-item">
+                                    <span class="stats-label">Tamanho:</span>
+                                    <span class="stats-value" id="stats-size">-</span>
+                                </div>
+                            </div>
+                            
+                            <h5>Amostra dos Dados</h5>
+                            <div class="data-preview">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="data-sample-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Carregando...</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Carregando...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center mt-4">
+                                <button class="btn btn-primary" id="go-to-chat-btn">
+                                    <i class="bi bi-chat-dots"></i> Ir para o Chat
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="upload-error" style="display: none;" class="mt-4">
+                            <div class="alert alert-danger">
+                                <i class="bi bi-exclamation-triangle-fill"></i> 
+                                <span id="error-message">Erro ao carregar planilha.</span>
+                            </div>
+                            <button class="btn btn-outline-primary" onclick="resetUpload()">
+                                <i class="bi bi-arrow-repeat"></i> Tentar Novamente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div id="chat-section" class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-chat-dots"></i> Chat com Dados
+                    </div>
+                    <div class="chat-container" id="chat-messages">
+                        <div class="bot-message chat-message">
+                            Olá! Sou seu assistente de análise de dados de frota. Faça upload de uma planilha Excel para começarmos ou pergunte sobre os dados já carregados.
+                            <div class="message-time">Agora</div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="input-group">
+                            <input type="text" class="form-control chat-input" id="chat-input" 
+                                   placeholder="Digite sua pergunta..." aria-label="Digite sua pergunta">
+                            <button class="send-button" id="send-button">
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <p class="text-muted">
+                        <i class="bi bi-info-circle"></i> Exemplos de perguntas:
+                    </p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-sm btn-outline-primary example-question">
+                            Quais são os motoristas com mais viagens?
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary example-question">
+                            Qual a distância média percorrida por motorista?
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary example-question">
+                            Mostre os scores de segurança dos motoristas
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary example-question">
+                            Gere um relatório geral em PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Section -->
+        <div id="reports-section" class="row" style="display: none;">
+            <div class="col-md-12 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-file-earmark-text"></i> Gerar Relatórios
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-4">
+                                <div class="card report-card" onclick="generateReport('geral', 'pdf')">
+                                    <div class="card-body text-center">
+                                        <div class="report-icon">
+                                            <i class="bi bi-file-earmark-bar-graph"></i>
+                                        </div>
+                                        <h5 class="mt-3">Relatório Geral</h5>
+                                        <p class="text-muted">Visão geral dos dados</p>
+                                        <span class="badge bg-danger">PDF</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-4">
+                                <div class="card report-card" onclick="generateReport('motoristas', 'pdf')">
+                                    <div class="card-body text-center">
+                                        <div class="report-icon">
+                                            <i class="bi bi-person-badge"></i>
+                                        </div>
+                                        <h5 class="mt-3">Relatório de Motoristas</h5>
+                                        <p class="text-muted">Análise por motorista</p>
+                                        <span class="badge bg-danger">PDF</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-4">
+                                <div class="card report-card" onclick="generateReport('viagens', 'pdf')">
+                                    <div class="card-body text-center">
+                                        <div class="report-icon">
+                                            <i class="bi bi-truck"></i>
+                                        </div>
+                                        <h5 class="mt-3">Relatório de Viagens</h5>
+                                        <p class="text-muted">Detalhes das viagens</p>
+                                        <span class="badge bg-danger">PDF</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-4">
+                                <div class="card report-card" onclick="generateReport('scores', 'pdf')">
+                                    <div class="card-body text-center">
+                                        <div class="report-icon">
+                                            <i class="bi bi-award"></i>
+                                        </div>
+                                        <h5 class="mt-3">Relatório de Scores</h5>
+                                        <p class="text-muted">Pontuação dos motoristas</p>
+                                        <span class="badge bg-danger">PDF</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-3 mb-4">
+                                <div class="card report-card" onclick="generateReport('geral', 'excel')">
+                                    <div class="card-body text-center">
+                                        <div class="report-icon">
+                                            <i class="bi bi-file-earmark-spreadsheet"></i>
+                                        </div>
+                                        <h5 class="mt-3">Relatório Geral</h5>
+                                        <p class="text-muted">Visão geral dos dados</p>
+                                        <span class="badge bg-success">Excel</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-4">
+                                <div class="card report-card" onclick="generateReport('motoristas', 'excel')">
+                                    <div class="card-body text-center">
+                                        <div class="report-icon">
+                                            <i class="bi bi-person-badge"></i>
+                                        </div>
+                                        <h5 class="mt-3">Relatório de Motoristas</h5>
+                                        <p class="text-muted">Análise por motorista</p>
+                                        <span class="badge bg-success">Excel</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-4">
+                                <div class="card report-card" onclick="generateReport('viagens', 'excel')">
+                                    <div class="card-body text-center">
+                                        <div class="report-icon">
+                                            <i class="bi bi-truck"></i>
+                                        </div>
+                                        <h5 class="mt-3">Relatório de Viagens</h5>
+                                        <p class="text-muted">Detalhes das viagens</p>
+                                        <span class="badge bg-success">Excel</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-4">
+                                <div class="card report-card" onclick="generateReport('scores', 'excel')">
+                                    <div class="card-body text-center">
+                                        <div class="report-icon">
+                                            <i class="bi bi-award"></i>
+                                        </div>
+                                        <h5 class="mt-3">Relatório de Scores</h5>
+                                        <p class="text-muted">Pontuação dos motoristas</p>
+                                        <span class="badge bg-success">Excel</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-folder"></i> Relatórios Gerados
+                    </div>
+                    <div class="card-body">
+                        <div class="loading-spinner" id="reports-loading">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <p class="mt-2">Carregando relatórios...</p>
+                        </div>
+                        
+                        <div id="reports-list" style="display: none;">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Tipo</th>
+                                            <th>Data</th>
+                                            <th>Tamanho</th>
+                                            <th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reports-table-body">
+                                        <!-- Reports will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div id="no-reports" style="display: none;" class="text-center py-4">
+                            <i class="bi bi-folder-x" style="font-size: 48px; color: #ccc;"></i>
+                            <p class="mt-3">Nenhum relatório gerado ainda.</p>
+                            <p class="text-muted">Gere relatórios usando as opções acima.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Generation Modal -->
+    <div class="modal fade" id="reportModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Gerando Relatório</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-3" id="report-status-text">Gerando relatório, por favor aguarde...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // DOM Elements
+        const chatSection = document.getElementById('chat-section');
+        const uploadSection = document.getElementById('upload-section');
+        const reportsSection = document.getElementById('reports-section');
+        const navChat = document.getElementById('nav-chat');
+        const navUpload = document.getElementById('nav-upload');
+        const navReports = document.getElementById('nav-reports');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const sendButton = document.getElementById('send-button');
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const uploadLoading = document.getElementById('upload-loading');
+        const uploadSuccess = document.getElementById('upload-success');
+        const uploadError = document.getElementById('upload-error');
+        const errorMessage = document.getElementById('error-message');
+        const goToChatBtn = document.getElementById('go-to-chat-btn');
+        const exampleQuestions = document.querySelectorAll('.example-question');
+        const reportModal = new bootstrap.Modal(document.getElementById('reportModal'));
+        
+        // State
+        let dataLoaded = false;
+        
+        // Navigation
+        navChat.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection(chatSection);
+            setActiveNav(navChat);
+        });
+        
+        navUpload.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection(uploadSection);
+            setActiveNav(navUpload);
+        });
+        
+        navReports.addEventListener('click', (e) => {
+            e.preventDefault();
+            showSection(reportsSection);
+            setActiveNav(navReports);
+            loadReportsList();
+        });
+        
+        function showSection(section) {
+            chatSection.style.display = 'none';
+            uploadSection.style.display = 'none';
+            reportsSection.style.display = 'none';
+            section.style.display = 'flex';
+        }
+        
+        function setActiveNav(navItem) {
+            navChat.classList.remove('active');
+            navUpload.classList.remove('active');
+            navReports.classList.remove('active');
+            navItem.classList.add('active');
+        }
+        
+        // Chat functionality
+        sendButton.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        function sendMessage() {
+            const message = chatInput.value.trim();
+            if (message === '') return;
+            
+            // Add user message to chat
+            addMessage(message, 'user');
+            chatInput.value = '';
+            
+            // Check if data is loaded
+            if (!dataLoaded) {
+                checkDataStatus().then(status => {
+                    if (status) {
+                        processMessage(message);
+                    } else {
+                        addMessage('Por favor, faça upload de uma planilha primeiro para que eu possa responder suas perguntas.', 'bot');
+                    }
+                });
+            } else {
+                processMessage(message);
+            }
+        }
+        
+        function processMessage(message) {
+            // Show typing indicator
+            const typingIndicator = addTypingIndicator();
+            
+            // Send message to API
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove typing indicator
+                chatMessages.removeChild(typingIndicator);
+                
+                if (data.success) {
+                    // Add bot response
+                    addMessage(data.answer, 'bot');
+                    
+                    // If there's data to display
+                    if (data.data && data.data.type) {
+                        // Handle different data types
+                        switch (data.data.type) {
+                            case 'scores':
+                                addScoresTable(data.data.data);
+                                break;
+                            case 'métricas_distância':
+                            case 'métricas_tempo':
+                            case 'métricas_consumo':
+                                addMetricsTable(data.data.data, data.data.type);
+                                break;
+                            case 'amostra':
+                                addSampleTable(data.data.data);
+                                break;
+                        }
+                    }
+                } else {
+                    addMessage(`Desculpe, ocorreu um erro: ${data.error}`, 'bot');
+                }
+            })
+            .catch(error => {
+                // Remove typing indicator
+                chatMessages.removeChild(typingIndicator);
+                addMessage('Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.', 'bot');
+                console.error('Error:', error);
+            });
+        }
+        
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('chat-message', `${sender}-message`);
+            messageDiv.textContent = text;
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.classList.add('message-time');
+            timeDiv.textContent = 'Agora';
+            
+            messageDiv.appendChild(timeDiv);
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function addTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.classList.add('chat-message', 'bot-message', 'typing-indicator');
+            typingDiv.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+            
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            return typingDiv;
+        }
+        
+        function addScoresTable(scores) {
+            if (!scores || scores.length === 0) return;
+            
+            const tableContainer = document.createElement('div');
+            tableContainer.classList.add('bot-message', 'chat-message', 'table-container');
+            
+            const table = document.createElement('table');
+            table.classList.add('table', 'table-sm', 'table-striped');
+            
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            // Get keys from first object
+            const keys = Object.keys(scores[0]);
+            keys.forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Create body
+            const tbody = document.createElement('tbody');
+            
+            // Limit to 5 rows
+            const displayScores = scores.slice(0, 5);
+            
+            displayScores.forEach(score => {
+                const row = document.createElement('tr');
+                
+                keys.forEach(key => {
+                    const td = document.createElement('td');
+                    
+                    // Format numbers
+                    if (typeof score[key] === 'number') {
+                        td.textContent = score[key].toFixed(2);
+                    } else {
+                        td.textContent = score[key];
+                    }
+                    
+                    row.appendChild(td);
+                });
+                
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+            
+            if (scores.length > 5) {
+                const moreText = document.createElement('p');
+                moreText.classList.add('text-muted', 'small', 'mt-2');
+                moreText.textContent = `Mostrando 5 de ${scores.length} registros. Gere um relatório para ver todos.`;
+                tableContainer.appendChild(moreText);
+            }
+            
+            chatMessages.appendChild(tableContainer);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function addMetricsTable(metrics, type) {
+            if (!metrics || metrics.length === 0) return;
+            
+            const tableContainer = document.createElement('div');
+            tableContainer.classList.add('bot-message', 'chat-message', 'table-container');
+            
+            const title = document.createElement('p');
+            title.classList.add('fw-bold');
+            title.textContent = `Métricas de ${type.split('_')[1]}`;
+            tableContainer.appendChild(title);
+            
+            const table = document.createElement('table');
+            table.classList.add('table', 'table-sm', 'table-striped');
+            
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            // Get keys from first object
+            const keys = Object.keys(metrics[0]);
+            keys.forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Create body
+            const tbody = document.createElement('tbody');
+            
+            // Limit to 5 rows
+            const displayMetrics = metrics.slice(0, 5);
+            
+            displayMetrics.forEach(metric => {
+                const row = document.createElement('tr');
+                
+                keys.forEach(key => {
+                    const td = document.createElement('td');
+                    
+                    // Format numbers
+                    if (typeof metric[key] === 'number') {
+                        td.textContent = metric[key].toFixed(2);
+                    } else {
+                        td.textContent = metric[key];
+                    }
+                    
+                    row.appendChild(td);
+                });
+                
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+            
+            if (metrics.length > 5) {
+                const moreText = document.createElement('p');
+                moreText.classList.add('text-muted', 'small', 'mt-2');
+                moreText.textContent = `Mostrando 5 de ${metrics.length} registros. Gere um relatório para ver todos.`;
+                tableContainer.appendChild(moreText);
+            }
+            
+            chatMessages.appendChild(tableContainer);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function addSampleTable(samples) {
+            if (!samples || samples.length === 0) return;
+            
+            const tableContainer = document.createElement('div');
+            tableContainer.classList.add('bot-message', 'chat-message', 'table-container');
+            
+            const title = document.createElement('p');
+            title.classList.add('fw-bold');
+            title.textContent = 'Amostra dos dados';
+            tableContainer.appendChild(title);
+            
+            const table = document.createElement('table');
+            table.classList.add('table', 'table-sm', 'table-striped');
+            
+            // Create header
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            
+            // Get keys from first object
+            const keys = Object.keys(samples[0]);
+            
+            // Limit columns to 5
+            const displayKeys = keys.slice(0, 5);
+            
+            displayKeys.forEach(key => {
+                const th = document.createElement('th');
+                th.textContent = key;
+                headerRow.appendChild(th);
+            });
+            
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+            
+            // Create body
+            const tbody = document.createElement('tbody');
+            
+            samples.forEach(sample => {
+                const row = document.createElement('tr');
+                
+                displayKeys.forEach(key => {
+                    const td = document.createElement('td');
+                    
+                    // Format numbers
+                    if (typeof sample[key] === 'number') {
+                        td.textContent = sample[key].toFixed(2);
+                    } else {
+                        td.textContent = sample[key];
+                    }
+                    
+                    row.appendChild(td);
+                });
+                
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+            
+            if (keys.length > 5) {
+                const moreText = document.createElement('p');
+                moreText.classList.add('text-muted', 'small', 'mt-2');
+                moreText.textContent = `Mostrando ${displayKeys.length} de ${keys.length} colunas. Gere um relatório para ver todos os dados.`;
+                tableContainer.appendChild(moreText);
+            }
+            
+            chatMessages.appendChild(tableContainer);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        // Example questions
+        exampleQuestions.forEach(button => {
+            button.addEventListener('click', () => {
+                chatInput.value = button.textContent.trim();
+                sendMessage();
+            });
+        });
+        
+        // Upload functionality
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('border-primary');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('border-primary');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('border-primary');
+            
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+        
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                handleFile(fileInput.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            // Check file type
+            const fileType = file.name.split('.').pop().toLowerCase();
+            if (!['xlsx', 'xls'].includes(fileType)) {
+                showUploadError('Formato de arquivo não suportado. Use .xlsx ou .xls');
+                return;
+            }
+            
+            // Show loading
+            uploadArea.style.display = 'none';
+            uploadLoading.style.display = 'block';
+            uploadSuccess.style.display = 'none';
+            uploadError.style.display = 'none';
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Upload file
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update data loaded state
+                    dataLoaded = true;
+                    
+                    // Update stats
+                    document.getElementById('stats-filename').textContent = data.filename;
+                    document.getElementById('stats-rows').textContent = data.metadata.num_rows;
+                    document.getElementById('stats-columns').textContent = data.metadata.num_columns;
+                    document.getElementById('stats-size').textContent = `${data.metadata.memory_usage.toFixed(2)} MB`;
+                    
+                    // Load sample data
+                    loadSampleData();
+                    
+                    // Show success
+                    uploadLoading.style.display = 'none';
+                    uploadSuccess.style.display = 'block';
+                } else {
+                    showUploadError(data.error);
+                }
+            })
+            .catch(error => {
+                showUploadError('Erro ao fazer upload do arquivo. Por favor, tente novamente.');
+                console.error('Error:', error);
+            });
+        }
+        
+        function showUploadError(message) {
+            uploadArea.style.display = 'block';
+            uploadLoading.style.display = 'none';
+            uploadSuccess.style.display = 'none';
+            uploadError.style.display = 'block';
+            errorMessage.textContent = message;
+        }
+        
+        function resetUpload() {
+            uploadArea.style.display = 'block';
+            uploadLoading.style.display = 'none';
+            uploadSuccess.style.display = 'none';
+            uploadError.style.display = 'none';
+            fileInput.value = '';
+        }
+        
+        function loadSampleData() {
+            fetch('/api/data/sample?size=10')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Get table elements
+                        const table = document.getElementById('data-sample-table');
+                        const thead = table.querySelector('thead');
+                        const tbody = table.querySelector('tbody');
+                        
+                        // Clear existing content
+                        thead.innerHTML = '';
+                        tbody.innerHTML = '';
+                        
+                        // Create header row
+                        const headerRow = document.createElement('tr');
+                        data.columns.forEach(column => {
+                            const th = document.createElement('th');
+                            th.textContent = column;
+                            headerRow.appendChild(th);
+                        });
+                        thead.appendChild(headerRow);
+                        
+                        // Create data rows
+                        data.sample.forEach(row => {
+                            const tr = document.createElement('tr');
+                            data.columns.forEach(column => {
+                                const td = document.createElement('td');
+                                
+                                // Format numbers
+                                if (typeof row[column] === 'number') {
+                                    td.textContent = row[column].toFixed(2);
+                                } else {
+                                    td.textContent = row[column];
+                                }
+                                
+                                tr.appendChild(td);
+                            });
+                            tbody.appendChild(tr);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading sample data:', error);
+                });
+        }
+        
+        // Go to chat button
+        goToChatBtn.addEventListener('click', () => {
+            showSection(chatSection);
+            setActiveNav(navChat);
+            addMessage('Planilha carregada com sucesso! Agora você pode fazer perguntas sobre os dados.', 'bot');
+        });
+        
+        // Reports functionality
+        function loadReportsList() {
+            // Show loading
+            document.getElementById('reports-loading').style.display = 'block';
+            document.getElementById('reports-list').style.display = 'none';
+            document.getElementById('no-reports').style.display = 'none';
+            
+            // Fetch reports
+            fetch('/api/reports/list')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.reports.length > 0) {
+                        // Get table body
+                        const tbody = document.getElementById('reports-table-body');
+                        
+                        // Clear existing content
+                        tbody.innerHTML = '';
+                        
+                        // Create rows
+                        data.reports.forEach(report => {
+                            const tr = document.createElement('tr');
+                            
+                            // Name
+                            const tdName = document.createElement('td');
+                            tdName.textContent = report.filename;
+                            tr.appendChild(tdName);
+                            
+                            // Type
+                            const tdType = document.createElement('td');
+                            const typeBadge = document.createElement('span');
+                            typeBadge.classList.add('badge', report.type === 'PDF' ? 'bg-danger' : 'bg-success');
+                            typeBadge.textContent = report.type;
+                            tdType.appendChild(typeBadge);
+                            tr.appendChild(tdType);
+                            
+                            // Date
+                            const tdDate = document.createElement('td');
+                            const date = new Date(report.created);
+                            tdDate.textContent = date.toLocaleString();
+                            tr.appendChild(tdDate);
+                            
+                            // Size
+                            const tdSize = document.createElement('td');
+                            tdSize.textContent = formatFileSize(report.size);
+                            tr.appendChild(tdSize);
+                            
+                            // Actions
+                            const tdActions = document.createElement('td');
+                            const downloadBtn = document.createElement('a');
+                            downloadBtn.href = report.path;
+                            downloadBtn.classList.add('btn', 'btn-sm', 'btn-primary');
+                            downloadBtn.innerHTML = '<i class="bi bi-download"></i> Baixar';
+                            downloadBtn.setAttribute('download', '');
+                            tdActions.appendChild(downloadBtn);
+                            tr.appendChild(tdActions);
+                            
+                            tbody.appendChild(tr);
+                        });
+                        
+                        // Show reports list
+                        document.getElementById('reports-loading').style.display = 'none';
+                        document.getElementById('reports-list').style.display = 'block';
+                    } else {
+                        // Show no reports message
+                        document.getElementById('reports-loading').style.display = 'none';
+                        document.getElementById('no-reports').style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading reports:', error);
+                    document.getElementById('reports-loading').style.display = 'none';
+                    document.getElementById('no-reports').style.display = 'block';
+                });
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(2) + ' KB';
+            else return (bytes / 1048576).toFixed(2) + ' MB';
+        }
+        
+        function generateReport(type, format) {
+            // Check if data is loaded
+            checkDataStatus().then(status => {
+                if (!status) {
+                    alert('Por favor, faça upload de uma planilha primeiro para gerar relatórios.');
+                    return;
+                }
+                
+                // Show modal
+                reportModal.show();
+                document.getElementById('report-status-text').textContent = `Gerando relatório ${type} em ${format.toUpperCase()}, por favor aguarde...`;
+                
+                // Send request
+                fetch('/api/reports/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        format: format
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Hide modal
+                    reportModal.hide();
+                    
+                    if (data.success) {
+                        // Show success message
+                        alert(`Relatório gerado com sucesso! Você pode baixá-lo na seção de relatórios.`);
+                        
+                        // Reload reports list
+                        if (reportsSection.style.display !== 'none') {
+                            loadReportsList();
+                        }
+                    } else {
+                        alert(`Erro ao gerar relatório: ${data.error}`);
+                    }
+                })
+                .catch(error => {
+                    reportModal.hide();
+                    alert('Erro ao gerar relatório. Por favor, tente novamente.');
+                    console.error('Error:', error);
+                });
+            });
+        }
+        
+        // Check data status
+        function checkDataStatus() {
+            return fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    dataLoaded = data.data_loaded;
+                    return data.data_loaded;
+                })
+                .catch(error => {
+                    console.error('Error checking data status:', error);
+                    return false;
+                });
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if data is loaded
+            checkDataStatus();
+        });
+    </script>
+</body>
+</html>
